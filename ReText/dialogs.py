@@ -27,7 +27,7 @@ class HtmlDialog(QDialog):
 		verticalLayout = QVBoxLayout(self)
 		self.textEdit = QTextEdit(self)
 		self.textEdit.setReadOnly(True)
-		self.textEdit.setFont(globalSettings.editorFont)
+		self.textEdit.setFont(globalSettings.getEditorFont())
 		self.hl = ReTextHighlighter(self.textEdit.document())
 		self.hl.docType = 'html'
 		verticalLayout.addWidget(self.textEdit)
@@ -40,9 +40,9 @@ class LocaleDialog(QDialog):
 	def __init__(self, parent, defaultText=None):
 		QDialog.__init__(self, parent)
 		verticalLayout = QVBoxLayout(self)
-		self.label = QLabel(self)
-		self.label.setText(self.tr('Enter locale name (example: en_US)'))
-		verticalLayout.addWidget(self.label)
+		labelText = self.tr('Enter locale name (example: en_US)') + '\n'
+		labelText += self.tr('It is possible to specify multiple languages, separated by comma.')
+		verticalLayout.addWidget(QLabel(labelText, self))
 		self.localeEdit = QLineEdit(self)
 		if defaultText:
 			self.localeEdit.setText(defaultText)

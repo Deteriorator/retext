@@ -26,11 +26,6 @@ from ReText.editor import ReTextEdit
 from ReText.highlighter import ReTextHighlighter
 from ReText.preview import ReTextPreview
 
-try:
-	import enchant
-except ImportError:
-	enchant = None
-
 from PyQt5.QtCore import pyqtSignal, Qt, QDir, QFile, QFileInfo, QPoint, QTextStream, QTimer, QUrl
 from PyQt5.QtGui import QPalette, QTextCursor, QTextDocument
 from PyQt5.QtWidgets import QApplication, QTextEdit, QSplitter, QMessageBox
@@ -80,8 +75,9 @@ class ReTextTab(QSplitter):
 
 		textDocument = self.editBox.document()
 		self.highlighter = ReTextHighlighter(textDocument)
-		if enchant is not None and parent.actionEnableSC.isChecked():
-			self.highlighter.dictionary = enchant.Dict(parent.sl or None)
+		if parent.actionEnableSC.isChecked():
+			dictionaries, _errors = parent.getSpellCheckDictionaries()
+			self.highlighter.dictionaries = dictionaries
 			# Rehighlighting is tied to the change in markup class that
 			# happens at the end of this function
 
@@ -265,15 +261,13 @@ class ReTextTab(QSplitter):
 			html = self.getHtmlFromConverted(self.converted)
 		except Exception:
 			return self.p.printError()
+		self.previewBox.setFont(globalSettings.getPreviewFont())
 		if isinstance(self.previewBox, QTextEdit):
 			self.previewBox.lastRenderTime = time.time()
 			self.previewBox.setHtml(html)
-			self.previewBox.document().setDefaultFont(globalSettings.font)
 			self.previewBox.updateScrollPosition(scrollbar.minimum(),
 			                                     scrollbar.maximum())
 		else:
-			self.previewBox.updateFontSettings()
-
 			# Always provide a baseUrl otherwise QWebView will
 			# refuse to show images or other external objects
 			if self._fileName:

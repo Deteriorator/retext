@@ -115,9 +115,9 @@ class ReTextWindow(QMainWindow):
 		self.actionSaveAs = self.act(self.tr('Save as'), 'document-save-as',
 			self.saveFileAs, shct=QKeySequence.StandardKey.SaveAs)
 		self.actionNextTab = self.act(self.tr('Next tab'), 'go-next',
-			lambda: self.switchTab(1), shct=Qt.Modifier.CTRL+Qt.Key.Key_PageDown)
+			lambda: self.switchTab(1), shct=Qt.Modifier.CTRL | Qt.Key.Key_PageDown)
 		self.actionPrevTab = self.act(self.tr('Previous tab'), 'go-previous',
-			lambda: self.switchTab(-1), shct=Qt.Modifier.CTRL+Qt.Key.Key_PageUp)
+			lambda: self.switchTab(-1), shct=Qt.Modifier.CTRL | Qt.Key.Key_PageUp)
 		self.actionCloseCurrentTab = self.act(self.tr('Close tab'), 'window-close',
 			lambda: self.closeTab(self.ind), shct=QKeySequence.StandardKey.Close)
 		self.actionPrint = self.act(self.tr('Print'), 'document-print',
@@ -132,9 +132,9 @@ class ReTextWindow(QMainWindow):
 		self.actionSearch = self.act(self.tr('Find text'), 'edit-find',
 			self.search, shct=QKeySequence.StandardKey.Find)
 		self.actionGoToLine = self.act(self.tr('Go to line'),
-			trig=self.goToLine, shct=Qt.Modifier.CTRL+Qt.Key.Key_G)
+			trig=self.goToLine, shct=Qt.Modifier.CTRL | Qt.Key.Key_G)
 		self.searchBar.visibilityChanged.connect(self.searchBarVisibilityChanged)
-		self.actionPreview = self.act(self.tr('Preview'), shct=Qt.Modifier.CTRL+Qt.Key.Key_E,
+		self.actionPreview = self.act(self.tr('Preview'), shct=Qt.Modifier.CTRL | Qt.Key.Key_E,
 			trigbool=self.preview)
 		if QIcon.hasThemeIcon('document-preview'):
 			self.actionPreview.setIcon(QIcon.fromTheme('document-preview'))
@@ -144,20 +144,20 @@ class ReTextWindow(QMainWindow):
 			self.actionPreview.setIcon(QIcon.fromTheme('x-office-document'))
 		else:
 			self.actionPreview.setIcon(QIcon(getBundledIcon('document-preview')))
-		self.actionLivePreview = self.act(self.tr('Live preview'), shct=Qt.Modifier.CTRL+Qt.Key.Key_L,
+		self.actionLivePreview = self.act(self.tr('Live preview'), shct=Qt.Modifier.CTRL | Qt.Key.Key_L,
 		trigbool=self.enableLivePreview)
 		menuPreview = QMenu()
 		menuPreview.addAction(self.actionLivePreview)
 		self.actionInsertTable = self.act(self.tr('Insert table'),
 			trig=lambda: self.insertFormatting('table'))
 		self.actionTableMode = self.act(self.tr('Table editing mode'),
-			shct=Qt.Modifier.CTRL+Qt.Key.Key_T,
+			shct=Qt.Modifier.CTRL | Qt.Key.Key_T,
 			trigbool=lambda x: self.currentTab.editBox.enableTableMode(x))
 		self.actionInsertImages = self.act(self.tr('Insert images by file path'),
 			trig=lambda: self.insertImages())
 		if ReTextFakeVimHandler:
 			self.actionFakeVimMode = self.act(self.tr('FakeVim mode'),
-				shct=Qt.Modifier.CTRL+Qt.Modifier.ALT+Qt.Key.Key_V, trigbool=self.enableFakeVimMode)
+				shct=Qt.Modifier.CTRL | Qt.Modifier.ALT | Qt.Key.Key_V, trigbool=self.enableFakeVimMode)
 			if globalSettings.useFakeVim:
 				self.actionFakeVimMode.setChecked(True)
 				self.enableFakeVimMode(True)
@@ -185,20 +185,19 @@ class ReTextWindow(QMainWindow):
 		self.actionPaste = self.act(self.tr('Paste'), 'edit-paste',
 			lambda: self.currentTab.editBox.paste(), shct=QKeySequence.StandardKey.Paste)
 		self.actionPasteImage = self.act(self.tr('Paste image'), 'edit-paste',
-			lambda: self.currentTab.editBox.pasteImage(), shct=Qt.Modifier.CTRL+Qt.Modifier.SHIFT+Qt.Key.Key_V)
+			lambda: self.currentTab.editBox.pasteImage(), shct=Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_V)
 		self.actionMoveUp = self.act(self.tr('Move line up'), 'go-up',
-			lambda: self.currentTab.editBox.moveLineUp(), shct=Qt.Modifier.ALT+Qt.Key.Key_Up)
+			lambda: self.currentTab.editBox.moveLineUp(), shct=Qt.Modifier.ALT | Qt.Key.Key_Up)
 		self.actionMoveDown = self.act(self.tr('Move line down'), 'go-down',
-			lambda: self.currentTab.editBox.moveLineDown(), shct=Qt.Modifier.ALT+Qt.Key.Key_Down)
+			lambda: self.currentTab.editBox.moveLineDown(), shct=Qt.Modifier.ALT | Qt.Key.Key_Down)
 		self.actionUndo.setEnabled(False)
 		self.actionRedo.setEnabled(False)
 		self.actionCopy.setEnabled(False)
 		self.actionCut.setEnabled(False)
 		qApp.clipboard().dataChanged.connect(self.clipboardDataChanged)
 		self.clipboardDataChanged()
-		if enchant is not None:
-			self.actionEnableSC = self.act(self.tr('Enable'), trigbool=self.enableSpellCheck)
-			self.actionSetLocale = self.act(self.tr('Set locale'), trig=self.changeLocale)
+		self.actionEnableSC = self.act(self.tr('Enable'), trigbool=self.enableSpellCheck)
+		self.actionSetLocale = self.act(self.tr('Set locale'), trig=self.changeLocale)
 		self.actionWebKit = self.act(self.tr('Use WebKit renderer'), trigbool=self.enableWebKit)
 		if ReTextWebKitPreview is None:
 			globalSettings.useWebKit = False
@@ -399,11 +398,11 @@ class ReTextWindow(QMainWindow):
 			timer.timeout.connect(self.saveAll)
 		self.ind = None
 		if enchant is not None:
-			self.sl = globalSettings.spellCheckLocale
-			try:
-				enchant.Dict(self.sl or None)
-			except enchant.errors.Error as e:
-				warnings.warn(str(e), RuntimeWarning)
+			self.spellCheckLanguages = globalSettings.spellCheckLocale
+			languages, errors = self.getSpellCheckDictionaries()
+			for error in errors:
+				warnings.warn(error, RuntimeWarning)
+			if not languages:
 				globalSettings.spellCheck = False
 			if globalSettings.spellCheck:
 				self.actionEnableSC.setChecked(True)
@@ -613,22 +612,22 @@ class ReTextWindow(QMainWindow):
 		self.tabActiveMarkupChanged(self.currentTab)
 
 	def changeEditorFont(self):
-		font, ok = QFontDialog.getFont(globalSettings.editorFont, self)
+		font, ok = QFontDialog.getFont(globalSettings.getEditorFont(), self)
 		if ok:
 			self.setEditorFont(font)
 
 	def setEditorFont(self, font):
-		globalSettings.editorFont = font
+		globalSettings.editorFont = font.toString()
 		for tab in self.iterateTabs():
 			tab.editBox.updateFont()
 
 	def changePreviewFont(self):
-		font, ok = QFontDialog.getFont(globalSettings.font, self)
+		font, ok = QFontDialog.getFont(globalSettings.getPreviewFont(), self)
 		if ok:
 			self.setPreviewFont(font)
 
 	def setPreviewFont(self, font):
-		globalSettings.font = font
+		globalSettings.font = font.toString()
 		for tab in self.iterateTabs():
 			tab.triggerPreviewUpdate()
 
@@ -682,36 +681,40 @@ class ReTextWindow(QMainWindow):
 		else:
 			FakeVimMode.exit(self)
 
-	def enableSpellCheck(self, yes):
-		try:
-			dict = enchant.Dict(self.sl or None)
-		except enchant.errors.Error as e:
-			QMessageBox.warning(self, '', str(e))
-			self.actionEnableSC.setChecked(False)
-			yes = False
-		self.setAllDictionaries(dict if yes else None)
-		globalSettings.spellCheck = yes
+	def getSpellCheckDictionaries(self):
+		"""Returns the list of languages and the list of errors."""
+		dictionaries = []
+		errors = []
+		if enchant is None:
+			return dictionaries, errors
+		for language in self.spellCheckLanguages.split(','):
+			try:
+				dict = enchant.Dict(language.strip() or None)
+			except enchant.errors.Error as e:
+				errors.append(str(e))
+			else:
+				dictionaries.append(dict)
+		return dictionaries, errors
 
-	def setAllDictionaries(self, dictionary):
+	def enableSpellCheck(self, yes):
+		dictionaries = []
+		if yes:
+			dictionaries, errors = self.getSpellCheckDictionaries()
+			if errors:
+				QMessageBox.warning(self, '', '\n'.join(errors))
 		for tab in self.iterateTabs():
-			hl = tab.highlighter
-			hl.dictionary = dictionary
-			hl.rehighlight()
+			tab.highlighter.dictionaries = dictionaries
+			tab.highlighter.rehighlight()
+		globalSettings.spellCheck = bool(dictionaries)
+		self.actionEnableSC.setChecked(bool(dictionaries))
 
 	def changeLocale(self):
-		localedlg = LocaleDialog(self, defaultText=self.sl)
+		localedlg = LocaleDialog(self, defaultText=self.spellCheckLanguages)
 		if localedlg.exec() != QDialog.DialogCode.Accepted:
 			return
-		sl = localedlg.localeEdit.text()
-		try:
-			enchant.Dict(sl or None)
-		except enchant.errors.Error as e:
-			QMessageBox.warning(self, '', str(e))
-		else:
-			self.sl = sl or None
-			self.enableSpellCheck(self.actionEnableSC.isChecked())
-			if localedlg.checkBox.isChecked():
-				globalSettings.spellCheckLocale = sl
+		self.spellCheckLanguages = localedlg.localeEdit.text()
+		self.enableSpellCheck(True)
+		globalSettings.spellCheckLocale = self.spellCheckLanguages
 
 	def search(self):
 		self.searchBar.setVisible(True)
@@ -991,7 +994,7 @@ class ReTextWindow(QMainWindow):
 		td = QTextDocument()
 		td.setMetaInformation(QTextDocument.MetaInformation.DocumentTitle, title)
 		td.setHtml(htmltext)
-		td.setDefaultFont(globalSettings.font)
+		td.setDefaultFont(globalSettings.getPreviewFont())
 		return td
 
 	def saveOdf(self):
